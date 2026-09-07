@@ -36,9 +36,20 @@ export async function getUploadPresignedUrl(
 /** Private file view/download karne ke liye temporary signed URL */
 export async function getDownloadPresignedUrl(
   key: string,
-  expiresIn = 3600
+  expiresIn = 3600,
+  downloadFilename?: string // 👈 Naya parameter add kiya hai
 ): Promise<string> {
-  const command = new GetObjectCommand({ Bucket: R2_BUCKET, Key: key });
+  const commandArgs: any = {
+    Bucket: R2_BUCKET,
+    Key: key
+  };
+
+  // 👈 Agar filename pass kiya hai, toh force download header add karein
+  if (downloadFilename) {
+    commandArgs.ResponseContentDisposition = `attachment; filename="${downloadFilename}"`;
+  }
+
+  const command = new GetObjectCommand(commandArgs);
   return getSignedUrl(r2Client, command, { expiresIn });
 }
 

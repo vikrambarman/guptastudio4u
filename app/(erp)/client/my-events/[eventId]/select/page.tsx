@@ -82,21 +82,30 @@ export default function SelectMediaPage() {
       for (const mediaId of selected) {
         const res = await fetch(`/api/download/${mediaId}`);
         const result = await res.json();
+
         if (result.success) {
+          // Ise iframe me append karein ya anchor tag se click karein
           const link = document.createElement("a");
           link.href = result.data.url;
-          link.download = "";
+          // Ab R2 khud attachment header bhejega, toh download attribute empty rakhne ki zaroorat nahi
+          link.style.display = "none";
           document.body.appendChild(link);
           link.click();
-          link.remove();
-          // Browser ko sequential downloads sambhalne ke liye chhota gap
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          document.body.removeChild(link);
+
+          // Browser ko sequential downloads sambhalne ke liye thoda zyada gap dein (1 second)
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         } else {
           alert(`Download failed: ${result.error}`);
         }
       }
+    } catch (error) {
+      console.error("Bulk download error:", error);
+      alert("Download me ek error aayi. Kripya dobara koshish karein.");
     } finally {
       setDownloading(false);
+      // Optional: Download hone ke baad selection clear kar dein
+      // setSelected(new Set()); 
     }
   };
 

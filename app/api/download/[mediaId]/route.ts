@@ -19,10 +19,14 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
   const media = await Media.findOne({ mediaId });
   if (!media) return apiError("Media not found", 404);
 
+  // Fallback name agar originalName database me nahi hai
+  const downloadFilename = media.originalName || `${mediaId}.${media.fileType === 'video' ? 'mp4' : 'jpg'}`;
+
   // ── Admin access: hamesha full access ──
   const adminSession = await auth();
   if (adminSession?.user) {
-    const url = await getDownloadPresignedUrl(media.r2Key, 1800);
+    // 👇 Yahan 3rd parameter 'downloadFilename' pass kiya gaya hai
+    const url = await getDownloadPresignedUrl(media.r2Key, 1800, downloadFilename);
     return apiSuccess({
       url,
       mediaId: media.mediaId,
@@ -60,7 +64,8 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       return apiError("Download link expire ho chuki hai.", 403);
     }
 
-    const url = await getDownloadPresignedUrl(media.r2Key, 1800);
+    // 👇 Yahan 3rd parameter 'downloadFilename' pass kiya gaya hai
+    const url = await getDownloadPresignedUrl(media.r2Key, 1800, downloadFilename);
 
     // Download count track karo
     await Media.updateOne(
