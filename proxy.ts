@@ -1,4 +1,4 @@
-// middleware.ts
+// proxy.ts
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { verifyClientToken } from "@/lib/auth/clientAuth";
@@ -9,7 +9,7 @@ const CLIENT_ROUTES = "/client";
 const ADMIN_LOGIN_PAGE = "/login";
 const CLIENT_LOGIN_PAGE = "/client-portal";
 
-export default async function middleware(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // ==========================================
