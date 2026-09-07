@@ -1,4 +1,4 @@
-// app/api/client/events/route.ts
+// app/api/clients/events/route.ts
 import { NextRequest } from "next/server";
 import { getClientSession } from "@/lib/auth/getClientSession";
 import connectDB from "@/lib/db/mongodb";

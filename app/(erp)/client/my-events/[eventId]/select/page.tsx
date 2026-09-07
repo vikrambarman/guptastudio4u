@@ -41,8 +41,8 @@ export default function SelectMediaPage() {
 
   const fetchData = useCallback(async () => {
     const [eventRes, mediaRes] = await Promise.all([
-      fetch(`/api/client/events/${eventId}`),
-      fetch(`/api/client/events/${eventId}/media`),
+      fetch(`/api/clients/events/${eventId}`),
+      fetch(`/api/clients/events/${eventId}/media`),
     ]);
     const eventJson = await eventRes.json();
     const mediaJson = await mediaRes.json();

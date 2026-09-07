@@ -137,7 +137,6 @@ export default async function EventDetailPage({ params }: PageProps) {
                 </div>
             </div>
 
-      // ✅ Iski jagah ye lagao:
             <div className="mt-6">
                 <div className="section-label">Download Permissions</div>
                 <PermissionPanel eventId={event.eventId} permissions={event.permissions} />
