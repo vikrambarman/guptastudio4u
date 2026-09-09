@@ -3,7 +3,7 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import Link from "next/link";
 import Image from "next/image";
 
 function AdminLoginForm() {
@@ -22,20 +22,26 @@ function AdminLoginForm() {
     setLoading(true);
 
     try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
+      const res = await fetch("/api/auth/request-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
+      const result = await res.json();
 
-      if (result?.error) {
-        setError("Invalid email or password");
+      if (!result.success) {
+        setError(result.error || "Invalid email or password");
         setLoading(false);
         return;
       }
 
-      router.push(callbackUrl);
-      router.refresh();
+      // Login token ko sessionStorage me rakho (URL me kabhi nahi - security)
+      sessionStorage.setItem("gs4u_login_token", result.data.loginToken);
+      sessionStorage.setItem("gs4u_login_email", result.data.email);
+
+      router.push(
+        `/login/verify-otp?callbackUrl=${encodeURIComponent(callbackUrl)}`
+      );
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);
@@ -102,6 +108,11 @@ function AdminLoginForm() {
             required
             disabled={loading}
           />
+          <div className="text-right mt-2">
+            <Link href="/login/forgot-password" className="text-xs text-gold">
+              Forgot Password?
+            </Link>
+          </div>
         </div>
 
         <button
@@ -110,7 +121,7 @@ function AdminLoginForm() {
           disabled={loading}
           style={{ width: "100%" }}
         >
-          {loading ? <span className="loader" /> : "Login to Dashboard"}
+          {loading ? <span className="loader" /> : "Continue"}
         </button>
       </form>
     </div>

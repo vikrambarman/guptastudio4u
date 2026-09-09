@@ -3,6 +3,8 @@ import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import connectDB from "@/lib/db/mongodb";
 import User, { UserRole } from "@/lib/db/models/User";
+import { verifyLoginToken } from "@/lib/auth/loginToken";
+import { compareSecret, findMatchingBackupCode } from "@/lib/auth/twoFactor";
 
 export const authConfig: NextAuthConfig = {
   pages: {
@@ -17,37 +19,69 @@ export const authConfig: NextAuthConfig = {
     Credentials({
       name: "credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+        loginToken: { label: "Login Token", type: "text" },
+        otp: { label: "OTP", type: "text" },
+        backupCode: { label: "Backup Code", type: "text" },
       },
+      /**
+       * ⚠️ Ye ab DIRECT email+password accept NAHI karta.
+       * Poora flow 2-step hai:
+       * 1) POST /api/auth/request-otp - email+password verify, OTP bhejo,
+       *    loginToken (temp, 5min) return karo
+       * 2) signIn("credentials", {loginToken, otp}) - yaha OTP verify hoke
+       *    hi asli session banta hai
+       *
+       * Isse guarantee milta hai ki KOI BHI login OTP verify kiye bina
+       * complete nahi ho sakta.
+       */
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("Email and password required");
+        const loginToken = credentials?.loginToken as string | undefined;
+        const otp = credentials?.otp as string | undefined;
+        const backupCode = credentials?.backupCode as string | undefined;
+
+        if (!loginToken || (!otp && !backupCode)) {
+          throw new Error("Invalid verification request. Please login again.");
+        }
+
+        const payload = verifyLoginToken(loginToken);
+        if (!payload) {
+          throw new Error("Login session expired. Please login again.");
         }
 
         await connectDB();
 
-        const user = await User.findOne({
-          email: (credentials.email as string).toLowerCase(),
-        }).select("+password");
+        const user = await User.findById(payload.userId).select(
+          "+twoFactorOtpHash +twoFactorOtpExpires +backupCodes"
+        );
 
-        if (!user) {
-          throw new Error("Invalid email or password");
-        }
-
+        if (!user) throw new Error("Account not found");
         if (!user.isActive) {
           throw new Error("Your account has been deactivated. Contact admin.");
         }
 
-        const isPasswordValid = await user.comparePassword(
-          credentials.password as string
-        );
+        if (otp) {
+          if (!user.twoFactorOtpHash || !user.twoFactorOtpExpires) {
+            throw new Error("No OTP request found. Please login again.");
+          }
+          if (new Date() > user.twoFactorOtpExpires) {
+            throw new Error("OTP expired. Please login again.");
+          }
+          const isValid = await compareSecret(otp, user.twoFactorOtpHash);
+          if (!isValid) throw new Error("Invalid OTP");
 
-        if (!isPasswordValid) {
-          throw new Error("Invalid email or password");
+          user.twoFactorOtpHash = undefined;
+          user.twoFactorOtpExpires = undefined;
+          await user.save();
+        } else if (backupCode) {
+          const codes = user.backupCodes || [];
+          const matchIndex = await findMatchingBackupCode(codes, backupCode);
+          if (matchIndex === -1) throw new Error("Invalid backup code");
+
+          codes.splice(matchIndex, 1);
+          user.backupCodes = codes;
+          await user.save();
         }
 
-        // ✅ id ko hamesha string return karo (never undefined)
         return {
           id: user._id.toString(),
           name: user.name,
@@ -60,7 +94,6 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        // ✅ user.id yaha guaranteed string hai (authorize se aaya hai)
         token.id = user.id as string;
         token.role = (user as { role: UserRole }).role;
       }

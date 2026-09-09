@@ -11,6 +11,13 @@ export interface IUserDocument extends Document {
     role: UserRole;
     phone?: string;
     isActive: boolean;
+    // ── 2FA Fields (naye) ──
+    twoFactorOtpHash?: string;
+    twoFactorOtpExpires?: Date;
+    passwordResetOtpHash?: string;
+    passwordResetOtpExpires?: Date;
+    backupCodes?: string[];
+    backupCodesGeneratedAt?: Date;
     createdAt: Date;
     updatedAt: Date;
     comparePassword(candidatePassword: string): Promise<boolean>;
@@ -36,7 +43,7 @@ const UserSchema = new Schema<IUserDocument>(
             type: String,
             required: [true, "Password is required"],
             minlength: 6,
-            select: false, // Query me by-default password nahi aayega
+            select: false,
         },
         role: {
             type: String,
@@ -51,29 +58,30 @@ const UserSchema = new Schema<IUserDocument>(
             type: Boolean,
             default: true,
         },
+        // ── 2FA Fields (naye) ──
+        twoFactorOtpHash: { type: String, select: false },
+        twoFactorOtpExpires: { type: Date, select: false },
+        passwordResetOtpHash: { type: String, select: false },
+        passwordResetOtpExpires: { type: Date, select: false },
+        backupCodes: { type: [String], select: false, default: [] },
+        backupCodesGeneratedAt: { type: Date },
     },
     { timestamps: true }
 );
 
-// Password hash karo save karne se pehle
-// ✅ NAYA (Fixed)
 UserSchema.pre("save", async function () {
     if (!this.isModified("password")) return;
 
     const salt = await bcrypt.genSalt(12);
     this.password = await bcrypt.hash(this.password, salt);
-    // Agar hash fail hua to yaha error automatically throw hoga
-    // aur Mongoose .save() ko reject kar dega — silent failure nahi hoga
 });
 
-// Password compare method
 UserSchema.methods.comparePassword = async function (
     candidatePassword: string
 ): Promise<boolean> {
     return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Index for faster queries
 UserSchema.index({ email: 1 });
 
 const User: Model<IUserDocument> =
