@@ -130,3 +130,39 @@ export async function getEventDetail(
   if (!event) return null;
   return flattenEvent(event as unknown as Record<string, unknown>);
 }
+
+
+/**
+ * Payments Dashboard ke liye — un events ki list jinka
+ * download-access payment abhi pending hai.
+ */
+export async function getPendingPaymentEvents(limit = 50) {
+  const events = await Event.find({
+    "permissions.paymentRequired": true,
+    "permissions.paymentStatus": "pending",
+  })
+    .populate("clientId", "clientId name phone")
+    .sort({ eventDate: -1 })
+    .limit(limit)
+    .lean();
+
+  return events.map((e) =>
+    flattenEvent(e as unknown as Record<string, unknown>)
+  );
+}
+
+
+/** Client ke apne events me se jinka payment abhi pending hai */
+export async function getClientPendingPaymentEvents(clientDbId: string) {
+  const events = await Event.find({
+    clientId: clientDbId,
+    "permissions.paymentRequired": true,
+    "permissions.paymentStatus": { $ne: "received" },
+  })
+    .sort({ eventDate: -1 })
+    .lean();
+
+  return events.map((e) =>
+    flattenEvent(e as unknown as Record<string, unknown>)
+  );
+}

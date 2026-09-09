@@ -39,6 +39,35 @@ export default function SelectMediaPage() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
 
+
+  const [requestingAlbum, setRequestingAlbum] = useState(false);
+
+  const handleRequestAlbum = async () => {
+    if (selected.size === 0) return;
+    setRequestingAlbum(true);
+    try {
+      const res = await fetch("/api/clients/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId,
+          mediaIds: Array.from(selected),
+        }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        alert(
+          `Album request bhej diya gaya hai (Order ID: ${result.data.orderId}). Studio jaldi contact karega.`
+        );
+        setSelected(new Set());
+      } else {
+        alert(result.error || "Album request bhejne me error aayi");
+      }
+    } finally {
+      setRequestingAlbum(false);
+    }
+  };
+
   const fetchData = useCallback(async () => {
     const [eventRes, mediaRes] = await Promise.all([
       fetch(`/api/clients/events/${eventId}`),
@@ -173,6 +202,8 @@ export default function SelectMediaPage() {
         canDownload={canDownload}
         onDownload={handleBulkDownload}
         onClear={() => setSelected(new Set())}
+        onRequestAlbum={handleRequestAlbum}
+        requestingAlbum={requestingAlbum}
       />
     </div>
   );

@@ -46,6 +46,12 @@ export default function ClientHeader({ name, clientId }: ClientHeaderProps) {
           <Link href="/client/my-events" className="text-sm text-muted">
             My Events
           </Link>
+          <Link href="/client/downloads" className="text-sm text-muted">
+            Downloads
+          </Link>
+          <Link href="/client/payments" className="text-sm text-muted">
+            Payments
+          </Link>
         </nav>
       </div>
 

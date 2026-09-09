@@ -7,6 +7,8 @@ interface DownloadCartProps {
   canDownload: boolean;
   onDownload: () => void;
   onClear: () => void;
+  onRequestAlbum?: () => void;
+  requestingAlbum?: boolean;
 }
 
 export default function DownloadCart({
@@ -15,6 +17,8 @@ export default function DownloadCart({
   canDownload,
   onDownload,
   onClear,
+  onRequestAlbum,
+  requestingAlbum = false,
 }: DownloadCartProps) {
   if (count === 0) return null;
 
@@ -27,14 +31,23 @@ export default function DownloadCart({
       <button
         className="btn btn-dark btn-sm"
         onClick={onClear}
-        disabled={downloading}
+        disabled={downloading || requestingAlbum}
       >
         Clear
       </button>
+      {onRequestAlbum && (
+        <button
+          className="btn btn-outline btn-sm"
+          onClick={onRequestAlbum}
+          disabled={requestingAlbum || downloading}
+        >
+          {requestingAlbum ? <span className="loader" /> : "📀 Request Album"}
+        </button>
+      )}
       <button
         className="btn btn-gold btn-sm"
         onClick={onDownload}
-        disabled={downloading || !canDownload}
+        disabled={downloading || !canDownload || requestingAlbum}
       >
         {downloading ? (
           <span className="loader" />
